@@ -15,24 +15,24 @@ Objectif final : un dashboard Power BI répondant à de vraies questions busines
 
 - [x] Installer **SQL Server** (édition Express ou Developer, gratuites) + **SQL Server Management Studio (SSMS)**
 - [x] Installer **Pentaho Data Integration (PDI / Spoon)** — édition Community
-- [x] Installer le **pilote JDBC Microsoft pour SQL Server** dans Pentaho (`mssql-jdbc-x.x.x.jre.jar`, téléchargé chez Microsoft, à placer dans le dossier `lib` de PDI — sinon la connexion échouera)
+	- [x] Installer le **pilote JDBC Microsoft pour SQL Server** dans Pentaho (`mssql-jdbc-x.x.x.jre.jar`, téléchargé chez Microsoft, à placer dans le dossier `lib` de PDI — sinon la connexion échouera)
 - [x] Installer **Power BI Desktop**
-- [ ] Dans SSMS, créer une base vide, ex. `olist_dw` (dw = data warehouse)
-- [ ] Vérifier que **l'authentification SQL Server** (mode mixte) est activée si tu comptes te connecter avec un login/mot de passe depuis Pentaho, sinon utiliser l'authentification Windows partout
+- [x] Dans SSMS, créer une base vide, ex. `olist_dw` (dw = data warehouse)
+- [x] Vérifier que **l'authentification SQL Server** (mode mixte) est activée si tu comptes te connecter avec un login/mot de passe depuis Pentaho, sinon utiliser l'authentification Windows partout
 
 ---
 
 ## Étape 1 — Récupérer et explorer les données
 
-- [ ] Télécharger le dataset **"Brazilian E-Commerce Public Dataset by Olist"** sur Kaggle
-- [ ] Dézipper et lister les fichiers CSV obtenus (normalement ~9 fichiers : commandes, clients, produits, vendeurs, paiements, avis, items de commande, géolocalisation, traduction des catégories)
-- [ ] Ouvrir chaque CSV et noter pour chacun :
+- [x] Télécharger le dataset **"Brazilian E-Commerce Public Dataset by Olist"** sur Kaggle
+- [x] Dézipper et lister les fichiers CSV obtenus (normalement ~9 fichiers : commandes, clients, produits, vendeurs, paiements, avis, items de commande, géolocalisation, traduction des catégories)
+- [x] Ouvrir chaque CSV et noter pour chacun :
   - le nombre de lignes / colonnes
   - le type de chaque colonne (texte, date, numérique, id)
   - la clé primaire probable
   - les colonnes qui font le lien avec les autres fichiers (clés étrangères)
-- [ ] Repérer les problèmes de qualité de données à corriger plus tard (valeurs manquantes, doublons, formats de date incohérents, encodage des caractères portugais)
-- [ ] Consulter le dictionnaire de données fourni par Olist sur Kaggle pour confirmer la signification de chaque table/colonne
+- [x] Repérer les problèmes de qualité de données à corriger plus tard (valeurs manquantes, doublons, formats de date incohérents, encodage des caractères portugais)
+- [x] Consulter le dictionnaire de données fourni par Olist sur Kaggle pour confirmer la signification de chaque table/colonne
 
 ---
 
@@ -40,17 +40,17 @@ Objectif final : un dashboard Power BI répondant à de vraies questions busines
 
 Avant de toucher à Pentaho, définir sur papier (ou dans un outil de modélisation) la structure cible dans MySQL.
 
-- [ ] Identifier la **table de faits** centrale : les lignes de commande (`order_items`), avec les mesures numériques (prix, frais de port, quantité)
-- [ ] Identifier les **tables de dimensions** autour :
+- [x] Identifier la **table de faits** centrale : les lignes de commande (`order_items`), avec les mesures numériques (prix, frais de port, quantité)
+- [x] Identifier les **tables de dimensions** autour :
   - dimension client (localisation, id client)
   - dimension produit (catégorie, poids, dimensions)
   - dimension vendeur (localisation, id vendeur)
   - dimension date/temps (à générer, pas fournie telle quelle — année, mois, jour, trimestre)
   - dimension avis/satisfaction (note, commentaire, délai de réponse)
   - dimension paiement (type, nombre de mensualités)
-- [ ] Dessiner le schéma en étoile (table de faits au centre, dimensions autour, clés étrangères)
-- [ ] Écrire le script T-SQL de création des tables cibles (`CREATE TABLE`, clés primaires, clés étrangères, types de colonnes — attention aux types spécifiques SQL Server : `NVARCHAR` pour le texte avec accents/portugais, `DATETIME2` pour les dates, `IDENTITY(1,1)` pour les auto-incréments)
-- [ ] Exécuter ce script dans SSMS pour créer la structure vide dans `olist_dw`
+- [x] Dessiner le schéma en étoile (table de faits au centre, dimensions autour, clés étrangères)
+- [x] Écrire le script T-SQL de création des tables cibles (`CREATE TABLE`, clés primaires, clés étrangères, types de colonnes — attention aux types spécifiques SQL Server : `NVARCHAR` pour le texte avec accents/portugais, `DATETIME2` pour les dates, `IDENTITY(1,1)` pour les auto-incréments)
+- [x] Exécuter ce script dans SSMS pour créer la structure vide dans `olist_dw`
 
 ---
 
@@ -58,49 +58,49 @@ Avant de toucher à Pentaho, définir sur papier (ou dans un outil de modélisat
 
 Pour **chaque fichier CSV source**, créer une *transformation* Pentaho dédiée :
 
-- [ ] **Extraction** : étape "CSV file input" pointant vers le fichier source
-- [ ] **Nettoyage** : suppression des doublons, gestion des valeurs nulles, conversion des types (dates, nombres), correction d'encodage si besoin
-- [ ] **Transformation** : renommage des colonnes selon le modèle cible, calculs dérivés si nécessaire (ex. extraire année/mois d'une date pour la dimension temps)
-- [ ] **Chargement** : étape "Table output" vers la table SQL Server correspondante dans `olist_dw` (créer la connexion Pentaho de type "MS SQL Server (native)" ou via JDBC)
+- [x] **Extraction** : étape "CSV file input" pointant vers le fichier source
+- [x] **Nettoyage** : suppression des doublons, gestion des valeurs nulles, conversion des types (dates, nombres), correction d'encodage si besoin
+- [x] **Transformation** : renommage des colonnes selon le modèle cible, calculs dérivés si nécessaire (ex. extraire année/mois d'une date pour la dimension temps)
+- [x] **Chargement** : étape "Table output" vers la table SQL Server correspondante dans `olist_dw` (créer la connexion Pentaho de type "MS SQL Server (native)" ou via JDBC)
 
 Ensuite :
 
-- [ ] Créer un **job Pentaho** qui enchaîne toutes les transformations dans le bon ordre (dimensions d'abord, table de faits en dernier, pour respecter les clés étrangères)
-- [ ] Ajouter une gestion d'erreur basique dans le job (arrêt ou log si une transformation échoue)
-- [ ] Exécuter le job complet et vérifier dans les logs Pentaho qu'aucune ligne n'est rejetée sans raison
+- [x] Créer un **job Pentaho** qui enchaîne toutes les transformations dans le bon ordre (dimensions d'abord, table de faits en dernier, pour respecter les clés étrangères)
+- [x] Ajouter une gestion d'erreur basique dans le job (arrêt ou log si une transformation échoue)
+- [x] Exécuter le job complet et vérifier dans les logs Pentaho qu'aucune ligne n'est rejetée sans raison
 
 ---
 
 ## Étape 4 — Contrôler la qualité des données chargées
 
-- [ ] Dans SSMS, vérifier le nombre de lignes chargées par table (comparer au nombre de lignes des CSV source)
-- [ ] Vérifier qu'il n'y a pas de clés étrangères orphelines (ex. une commande référençant un client inexistant)
-- [ ] Tester quelques requêtes SQL de contrôle (jointures entre table de faits et dimensions, agrégats simples : total des ventes, nombre de commandes par mois)
-- [ ] Corriger et relancer l'ETL Pentaho si des anomalies sont trouvées
+- [x] Dans SSMS, vérifier le nombre de lignes chargées par table (comparer au nombre de lignes des CSV source)
+- [x] Vérifier qu'il n'y a pas de clés étrangères orphelines (ex. une commande référençant un client inexistant)
+- [x] Tester quelques requêtes SQL de contrôle (jointures entre table de faits et dimensions, agrégats simples : total des ventes, nombre de commandes par mois)
+- [x] Corriger et relancer l'ETL Pentaho si des anomalies sont trouvées
 
 ---
 
 ## Étape 5 — Connecter Power BI à SQL Server
 
-- [ ] Aucun pilote supplémentaire n'est normalement nécessaire : Power BI Desktop a un connecteur natif SQL Server
-- [ ] Dans Power BI Desktop : Obtenir des données → Base de données SQL Server → renseigner le nom du serveur (ex. `localhost` ou `NOMPC\SQLEXPRESS`) et la base `olist_dw`
-- [ ] Choisir le mode d'authentification (Windows ou SQL Server selon ce qui a été configuré à l'étape 0)
-- [ ] Choisir **Import** (plutôt que DirectQuery) pour ce projet d'entraînement, plus simple et plus rapide pour manipuler les mesures DAX
-- [ ] Importer les tables de faits et de dimensions créées à l'étape 2
-- [ ] Vérifier/recréer les relations entre tables dans la vue "Modèle" de Power BI (elles ne sont pas toujours détectées automatiquement)
+- [x] Aucun pilote supplémentaire n'est normalement nécessaire : Power BI Desktop a un connecteur natif SQL Server
+- [x] Dans Power BI Desktop : Obtenir des données → Base de données SQL Server → renseigner le nom du serveur (ex. `localhost` ou `NOMPC\SQLEXPRESS`) et la base `olist_dw`
+- [x] Choisir le mode d'authentification (Windows ou SQL Server selon ce qui a été configuré à l'étape 0)
+- [x] Choisir **Import** (plutôt que DirectQuery) pour ce projet d'entraînement, plus simple et plus rapide pour manipuler les mesures DAX
+- [x] Importer les tables de faits et de dimensions créées à l'étape 2
+- [x] Vérifier/recréer les relations entre tables dans la vue "Modèle" de Power BI (elles ne sont pas toujours détectées automatiquement)
 
 ---
 
 ## Étape 6 — Définir les questions business et les mesures DAX
 
-- [ ] Lister 4 à 6 questions métier précises, par exemple :
+- [x] Lister 4 à 6 questions métier précises, par exemple :
   - Quel est le chiffre d'affaires total et son évolution mensuelle ?
   - Quelles sont les catégories de produits les plus vendues ?
   - Quel est le délai de livraison moyen, et varie-t-il selon la région ?
   - Quelle est la note moyenne de satisfaction client, et est-elle liée au délai de livraison ?
   - Quels sont les vendeurs les plus performants ?
-- [ ] Écrire les mesures DAX correspondantes (CA total, nombre de commandes, panier moyen, délai moyen de livraison, note moyenne, etc.)
-- [ ] Créer les colonnes calculées nécessaires si une mesure ne suffit pas (ex. catégorie de délai : rapide/normal/lent)
+- [x] Écrire les mesures DAX correspondantes (CA total, nombre de commandes, panier moyen, délai moyen de livraison, note moyenne, etc.)
+- [x] Créer les colonnes calculées nécessaires si une mesure ne suffit pas (ex. catégorie de délai : rapide/normal/lent)
 
 ---
 
