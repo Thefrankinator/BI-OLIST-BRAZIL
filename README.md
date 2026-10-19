@@ -1,103 +1,102 @@
-# Projet BI — Olist (E-commerce Brésil)
+# BI Project — Olist (Brazilian E-commerce)
 
-Projet CAP-PREP : pipeline BI complet sur le jeu de données public **Olist** (e-commerce brésilien, Kaggle).
+CAP-PREP project: an end-to-end BI pipeline built on the public **Olist** dataset (Brazilian e-commerce, Kaggle).
 
 ```
-CSV bruts (Kaggle) → Pentaho Data Integration (ETL) → SQL Server (entrepôt olist_dw) → Power BI (reporting)
+Raw CSV files (Kaggle) → Pentaho Data Integration (ETL) → SQL Server (olist_dw warehouse) → Power BI (reporting)
 ```
 
-Le déroulé détaillé, étape par étape, est suivi dans [`Plan-Projet.md`](Plan-Projet.md). Ce document résume le résultat : le modèle de données, les choix faits, les difficultés rencontrées et le dashboard obtenu.
+The detailed step-by-step process is documented in [`Plan-Projet.md`](Plan-Projet.md). This document summarizes the outcome: the data model, the design choices, the challenges encountered and the resulting dashboard.
 
 ---
 
-## 1. Objectif métier
+## 1. Business objective
 
-Répondre à partir des données réelles Olist à des questions comme :
-- Quel est le chiffre d'affaires total et son évolution mensuelle ?
-- Quelles sont les villes / catégories de produits qui génèrent le plus de commandes ?
-- Quel est le délai moyen de livraison ?
-- Quels états (régions brésiliennes) contribuent le plus au CA ?
+Use the real Olist data to answer questions such as:
+- What is the total revenue and how does it evolve month by month?
+- Which cities / product categories generate the most orders?
+- What is the average delivery time?
+- Which states (Brazilian regions) contribute the most to revenue?
 
 ---
 
-## 2. Modèle de données (schéma en étoile)
+## 2. Data model (star schema)
 
-Créé par [`migrations/01_create_database.sql`](migrations/01_create_database.sql) et [`migrations/02_create_tables.sql`](migrations/02_create_tables.sql).
+Created by [`migrations/01_create_database.sql`](migrations/01_create_database.sql) and [`migrations/02_create_tables.sql`](migrations/02_create_tables.sql).
 
-**Table de faits** — `fact_order_items` (grain : une ligne = un article d'une commande)
-- Mesures : `total_price`, `total_freight_value`, `total_order_items`, `delays` (écart livraison réelle / estimée)
-- Clés étrangères : `product_key`, `customer_key`, `seller_key`, et 3 clés vers `dim_date` (date d'achat, de livraison, estimée)
+**Fact table** — `fact_order_items` (grain: one row = one item of an order)
+- Measures: `total_price`, `total_freight_value`, `total_order_items`, `delays` (gap between actual and estimated delivery date)
+- Foreign keys: `product_key`, `customer_key`, `seller_key`, and 3 keys to `dim_date` (purchase date, delivery date, estimated delivery date)
 
 **Dimensions**
-| Table | Contenu |
+| Table | Content |
 |---|---|
 | `dim_customers` | `customer_id`, `customer_city`, `customer_state` |
 | `dim_seller` | `seller_id`, `seller_state` |
 | `dim_products` | `product_id`, `product_weight_g` |
-| `dim_date` | date complète + année / trimestre / mois / jour de semaine (générée, pas fournie par Olist) |
-
+| `dim_date` | full date + year / quarter / month / day of week (generated, not provided by Olist) |
 
 ---
 
 ## 3. ETL (Pentaho Data Integration)
 
-Le job [`ETL/ETL_pipeline.kjb`](ETL/ETL_pipeline.kjb) enchaîne les transformations dans l'ordre (dimensions avant faits, pour respecter les clés étrangères) :
+The job [`ETL/ETL_pipeline.kjb`](ETL/ETL_pipeline.kjb) runs the transformations in order (dimensions before facts, to satisfy foreign key constraints):
 
 ```
 dim_customer → dim_product → dim_date → dim_seller → fact_order_items
 ```
 
-Traitements qualité appliqués pendant l'ETL (voir le détail des anomalies repérées à l'exploration dans [`dataset/NOTES.md`](dataset/NOTES.md)) :
-- **Catégories produit** : traduction portugais → anglais par jointure avec `product_category_name_translation.csv` (attention gérée au BOM UTF-8 en tête de ce fichier) ; valeur `"unknown"` si la catégorie manque.
-- **Encodage** : colonnes texte en `NVARCHAR` côté SQL Server pour les caractères accentués du portugais brésilien.
+Data quality handling applied during ETL (see the anomalies identified during exploration in [`dataset/NOTES.md`](dataset/NOTES.md)):
+- **Product categories**: Portuguese → English translation via a join with `product_category_name_translation.csv` (handling the UTF-8 BOM at the start of that file); value set to `"unknown"` when the category is missing.
+- **Encoding**: text columns stored as `NVARCHAR` in SQL Server to support Brazilian Portuguese accented characters.
 
 ---
 
-## 4. Dashboard Power BI
+## 4. Power BI dashboard
 
-Fichier : [`olist_DW_VISUALISATION.pbix`](olist_DW_VISUALISATION.pbix) — connecté en **Import** sur `olist_dw`. Filtres communs : **Année** et **Mois**.
+File: [`olist_DW_VISUALISATION.pbix`](olist_DW_VISUALISATION.pbix) — connected to `olist_dw` in **Import** mode. Shared filters: **Year** and **Month**.
 
-### Vue générale
-![Vue générale](images/Vue_generale.png)
+### Overview
+![Overview](images/Vue_generale.png)
 
-KPI globaux (CA total, nombre de commandes, délai moyen de livraison), répartition CA vs frais de port, et CA total par état.
+Global KPIs (total revenue, number of orders, average delivery time), revenue vs. freight cost breakdown, and total revenue by state.
 
-### Page 1 — Ventes & répartition géographique
+### Page 1 — Sales & geographic distribution
 ![Page 1](images/page_1.png)
 
-Top 10 des villes par nombre de commandes, évolution du CA et du nombre de commandes par mois.
+Top 10 cities by number of orders, monthly evolution of revenue and number of orders.
 
-### Page 2 — Produits
+### Page 2 — Products
 ![Page 2](images/page_2.png)
 
-Top 10 des catégories de produits les plus commandées, répartition du top 10 par état (filtre sur l'état, ex. São Paulo).
+Top 10 most ordered product categories, top 10 breakdown by state (state filter, e.g. São Paulo).
 
 ---
 
-## 5. Difficultés rencontrées & choix faits
+## 5. Challenges & design choices
 
-- **`customer_id` ≠ `customer_unique_id`** : un même client physique peut avoir plusieurs `customer_id` (un par commande). Le DW garde `customer_id` comme clé technique de la dimension, en connaissance de cause — pas une vraie dimension client dédupliquée.
-- **Nulls sur les dates de livraison** dans `orders` : normaux pour les commandes non livrées/annulées, non "corrigés" artificiellement — d'où `date_order_del_cust_id` nullable dans `fact_order_items`.
-- **Dérive script SQL / base réelle** (voir section 2) : les migrations n'ont pas toujours été tenues à jour après des modifications faites directement dans SSMS.
-
----
-
-## 6. Reproduire le projet
-
-1. SQL Server : exécuter [`migrations/01_create_database.sql`](migrations/01_create_database.sql) puis [`migrations/02_create_tables.sql`](migrations/02_create_tables.sql) dans SSMS.
-2. Placer les CSV Olist (Kaggle) dans `dataset/` (dossier ignoré par git, voir `.gitignore`).
-3. Pentaho : ouvrir [`ETL/ETL_pipeline.kjb`](ETL/ETL_pipeline.kjb) dans Spoon et l'exécuter (driver JDBC SQL Server requis dans le dossier `lib` de PDI).
-4. Power BI : ouvrir [`olist_DW_VISUALISATION.pbix`](olist_DW_VISUALISATION.pbix), actualiser la connexion vers `olist_dw` si besoin.
+- **`customer_id` ≠ `customer_unique_id`**: a single physical customer can have several `customer_id` values (one per order). The DW deliberately keeps `customer_id` as the technical key of the dimension — it is not a truly deduplicated customer dimension.
+- **Null delivery dates** in `orders`: expected for undelivered/canceled orders and not artificially "fixed" — hence `date_order_del_cust_id` is nullable in `fact_order_items`.
+- **Drift between SQL scripts and the actual database**: the migrations were not always kept up to date after changes made directly in SSMS.
 
 ---
 
-## 7. Structure du repo
+## 6. Reproducing the project
+
+1. SQL Server: run [`migrations/01_create_database.sql`](migrations/01_create_database.sql) then [`migrations/02_create_tables.sql`](migrations/02_create_tables.sql) in SSMS.
+2. Place the Olist CSV files (Kaggle) in `dataset/` (folder ignored by git, see `.gitignore`).
+3. Pentaho: open [`ETL/ETL_pipeline.kjb`](ETL/ETL_pipeline.kjb) in Spoon and run it (SQL Server JDBC driver required in PDI's `lib` folder).
+4. Power BI: open [`olist_DW_VISUALISATION.pbix`](olist_DW_VISUALISATION.pbix) and refresh the connection to `olist_dw` if needed.
+
+---
+
+## 7. Repository structure
 
 ```
-ETL/          transformations et job Pentaho (.ktr / .kjb)
-migrations/   scripts SQL de création de l'entrepôt olist_dw
-dataset/      CSV sources Olist (non versionnés) + notes d'exploration
-images/       captures d'écran du dashboard Power BI
-Plan-Projet.md   carnet de bord détaillé, étape par étape
-olist_DW_VISUALISATION.pbix   le rapport Power BI
+ETL/          Pentaho transformations and job (.ktr / .kjb)
+migrations/   SQL scripts creating the olist_dw warehouse
+dataset/      Olist source CSVs (not versioned) + exploration notes
+images/       Power BI dashboard screenshots
+Plan-Projet.md   detailed step-by-step project log
+olist_DW_VISUALISATION.pbix   the Power BI report
 ```
